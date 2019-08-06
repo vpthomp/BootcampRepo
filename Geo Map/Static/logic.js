@@ -1,114 +1,145 @@
-// We create the tile layer that will be the background of our map.
-console.log("working");
+// var url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson"
+var url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
 
-#var apiKey = "hidden";
+// Function for marker size
+function markerSize(mag){
+  return mag * 5;
+}
 
-var graymap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
-  attribution: "Map data &copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors, <a href='https://creativecommons.org/licenses/by-sa/2.0/'>CC-BY-SA</a>, Imagery © <a href='https://www.mapbox.com/'>Mapbox</a>",
-  maxZoom: 18,
-  id: "mapbox.streets",
-  accessToken: apiKey
-});
+// Function for marker color
+function markerColor(mag){
+  if (mag <= 1) {
+    return "#ADFF2F";
+  } else if (mag <= 2){
+    return "#9ACD32";
+  } else if (mag <=3){
+    return "#FFFF00";
+  } else if (mag <=4) {
+    return "#FFD700";
+  } else if (mag <=5) {
+    return "#FFA500";
+  } else {
+    return "#FF0000"; 
+  };
+}
 
-// We create the map object with options.
-var map = L.map("mapid", {
-  center: [
-    40.7, -94.5
-  ],
-  zoom: 3
-});
+// Grab JSON data 
+d3.json(url, function(data){
+    // console.log(data)
+    createFeatures(data.features);
+})
 
-// Then we add our 'graymap' tile layer to the map.
-graymap.addTo(map);
+function createFeatures(earthquakeData){
+  //   // simple version, without colored markers
+  //   // Define a function we want to run once for each feature in the features array
+  //   // Give each feature a popup describing the place and time of the earthquake
+  
+  //   function onEachFeature(feature, layer) {
+  //     layer.bindPopup("<h3>" + feature.properties.place +
+  //       "</h3><hr><p>" + new Date(feature.properties.time) + "</p>");
+  //   }
+    
+  //   // Create a GeoJSON layer containing the features array on the earthquakeData object
+  //   // Run the onEachFeature function once for each piece of data in the array
+ 
+  //   var earthquakes = L.geoJSON(earthquakeData, {
+  //     onEachFeature: onEachFeature
+  //   });
+  
+  //   //Sending earthquake layer to the createMap function
+  //   createMap(earthquakes)
+  // }
 
-// Here we make an AJAX call that retrieves our earthquake geoJSON data.
-d3.json("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson", function(data) {
 
-  // This function returns the style data for each of the earthquakes we plot on
-  // the map. We pass the magnitude of the earthquake into two separate functions
-  // to calculate the color and radius.
-  function styleInfo(feature) {
-    return {
-      opacity: 1,
-      fillOpacity: 1,
-      fillColor: getColor(feature.properties.mag),
-      color: "#000000",
-      radius: getRadius(feature.properties.mag),
-      stroke: true,
-      weight: 0.5
-    };
-  }
 
-  // This function determines the color of the marker based on the magnitude of the earthquake.
-  function getColor(magnitude) {
-    switch (true) {
-    case magnitude > 5:
-      return "#ea2c2c";
-    case magnitude > 4:
-      return "#ea822c";
-    case magnitude > 3:
-      return "#ee9c00";
-    case magnitude > 2:
-      return "#eecc00";
-    case magnitude > 1:
-      return "#d4ee00";
-    default:
-      return "#98ee00";
-    }
-  }
-
-  // This function determines the radius of the earthquake marker based on its magnitude.
-  // Earthquakes with a magnitude of 0 were being plotted with the wrong radius.
-  function getRadius(magnitude) {
-    if (magnitude === 0) {
-      return 1;
-    }
-
-    return magnitude * 4;
-  }
-
-  // Here we add a GeoJSON layer to the map once the file is loaded.
-  L.geoJson(data, {
-    // We turn each feature into a circleMarker on the map.
-    pointToLayer: function(feature, latlng) {
-      return L.circleMarker(latlng);
-    },
-    // We set the style for each circleMarker using our styleInfo function.
-    style: styleInfo,
-    // We create a popup for each marker to display the magnitude and location of the earthquake after the marker has been created and styled
-    onEachFeature: function(feature, layer) {
-      layer.bindPopup("Magnitude: " + feature.properties.mag + "<br>Location: " + feature.properties.place);
-    }
-  }).addTo(map);
-
-  // Here we create a legend control object.
-  var legend = L.control({
-    position: "bottomright"
+  // With markers according
+  // Create a GeoJSON layer containing the features array on the earthquakeData object
+  // Run the onEachFeature function once for each piece of data in the array
+  var earthquakes = L.geoJSON(earthquakeData, {
+    // onEachFeature: onEachFeature
+    // Define a function we want to run once for each feature in the features array
+    // Give each feature a popup describing the place and time of the earthquake
+    onEachFeature: function (feature, layer) {
+      layer.bindPopup("<h3>" + feature.properties.place +
+        "</h3><hr><p>" + new Date(feature.properties.time) + "</p>" + 
+        "<p> Magnitude: " + feature.properties.mag + "</p>")
+      } , 
+      pointToLayer: function (feature, latlng){
+        return new L.circleMarker(latlng, 
+          {radius: markerSize(feature.properties.mag), 
+          fillColor: markerColor(feature.properties.mag), 
+          fillOpacity: 0.8,
+          opacity: 0.5, 
+          stroke: false,
+          })
+      }
+  //end of earthquakes
   });
 
-  // Then add all the details for the legend
-  legend.onAdd = function() {
-    var div = L.DomUtil.create("div", "info legend");
+  //Sending earthquake layer to the createMap function
+  createMap(earthquakes);
+// End of createFeatures function
+}
 
-    var grades = [0, 1, 2, 3, 4, 5];
-    var colors = [
-      "#98ee00",
-      "#d4ee00",
-      "#eecc00",
-      "#ee9c00",
-      "#ea822c",
-      "#ea2c2c"
-    ];
+function createMap(earthquakes){
+    // Define streetmap and darkmap layers
+    var streetmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+        attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
+        maxZoom: 18,
+        id: "mapbox.streets",
+        accessToken: API_KEY
+    });
+    
+      var darkmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+        attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
+        maxZoom: 18,
+        id: "mapbox.dark",
+        accessToken: API_KEY
+    });
 
-    // Looping through our intervals to generate a label with a colored square for each interval.
-    for (var i = 0; i < grades.length; i++) {
-      div.innerHTML +=
-        "<i style='background: " + colors[i] + "'></i> " +
-        grades[i] + (grades[i + 1] ? "&ndash;" + grades[i + 1] + "<br>" : "+");
-    }
-    return div;
-  };
+    // Define a baseMaps object to hold base layers
+    var baseMaps = {
+        "Street Map": streetmap,
+        "Dark Map": darkmap
+    };
 
-  // Finally, we our legend to the map.
-  legend.addTo(map);
-});
+    //Create object to hold overlay layer
+    var overlayMaps = {
+        Earthquakes: earthquakes
+    };
+    
+    // Create map, displaying the streetmap and earthquakes layers on load
+    var myMap = L.map("map", {
+        center: [31.57853542647338, -99.580078125],
+    zoom: 4,
+    layers: [streetmap, earthquakes]
+  });
+    L.control.layers(baseMaps, overlayMaps, {
+    collapsed: false
+    }).addTo(myMap);
+
+    // Create a legend
+    var legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function(){
+
+        var div = L.DomUtil.create("div", "info legend");
+
+        magnitude = [0,1,2,3,4,5,6];
+
+        for (var i = 0; i < magnitude.length; i++) {
+          div.innerHTML +=
+              '<i style="background:' + markerColor(magnitude[i] + 1) + '"></i> ' +
+              magnitude[i] + (magnitude[i + 1] ? '&ndash;' + magnitude[i + 1] + '<br>' : '+');
+        }
+  
+      return div;
+    //end function of legend    
+    };
+  
+    // Adding legend to the map
+    legend.addTo(myMap);
+    
+
+// End createMap function
+}
